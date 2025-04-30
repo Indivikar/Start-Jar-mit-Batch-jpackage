@@ -8,7 +8,7 @@ Dieses .bat-Script startet eine Java-Datei mit den JavaFX-Modules. Das Script ko
 - es kann in der Datei `startScriptJavaJPackage.bat` der Output-Modus gewechselt werden `set "OUTPUT_MODE=CONSOLE"` oder `set "OUTPUT_MODE=LOG"`, beim Log-Modus wird in dem Ordner wo das Script ausgeführt wird, ein Ordner "logs" angelegt, in diesem Ordner befinden sich die Log-Dateien
 - die Datei `startScriptJavaJPackage.bat` muss im gleichen Ordner liegen, wie die Datei, die gestartet werden soll
 - die Datei `startScriptJavaJPackage.bat` selbst, kann beliebig umbenannt werden
-- gestartet werden können dateien mit der Endung .exe, die mit jlink und jpackage erstellt wurden
+- gestartet werden können dateien mit der Endung .exe, die mit `jlink und jpackage` erstellt wurden
 
 <br><br>
 
