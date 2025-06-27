@@ -5,13 +5,13 @@ rem =======================================
 rem               Config
 rem =======================================
 
-set "scriptVersion=v1.1.1" 
+set "scriptVersion=v1.1.2" 
 
 rem --- Ausgabe wählen: CONSOLE oder LOG ---
 rem möglich ist: CONSOLE oder LOG
 rem CONSOLE = Ausgabe nur in der Konsole
 rem LOG = Ausgabe nur im LOG-File
-set "OUTPUT_MODE=LOG" 
+set "OUTPUT_MODE=CONSOLE" 
 
 rem Welche Datei soll mit Java gestartet werden
 set "startDatei=package.exe" 
@@ -23,24 +23,25 @@ set "add_modules[2]=javafx.graphics"
 set "add_modules[3]=javafx.base"
 set "add_modules[4]=javafx.media"
 set "add_modules[5]=javafx.web"
-rem "javafx.swing" ist ab Java 14 nicht mehr supportet
-set "add_modules[6]=javafx.swing" 
+rem ab Java 14 nicht mehr supportet
+set "add_modules[6]=javafx.swing"
 
 rem welche "--add-opens" sollen zum Start-Befehl hinzugefügt werden
 set "add_opens[0]=javafx.graphics/javafx.css=ALL-UNNAMED"
 set "add_opens[1]=javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED"
 
 rem welche Java-Args sollen zum Start-Befehl hinzugefügt werden
-set "java_args[0]=-authStartMitLogin"
-set "java_args[1]=-authStartMitLogin"
+set "java_args[0]=-arg1"
+set "java_args[1]=-arg2"
+
 
 rem Liste mit Versionsnummern, nach den gesucht werden sollen, die bevorzugte Version muss oben stehen 
-REM set "javaVersions[0]=14.0.1"
-REM set "javaVersions[0]=14.0.2"
-REM set "javaVersions[1]=11.0.5"
+rem ACHTUNG - keine Version auskommenieren, sonst läuft das Script nich mehr
+set "javaVersions[0]=14.0.1"
+set "javaVersions[1]=11.0.5"
 set "javaVersions[2]=11.0.11"
-REM set "javaVersions[3]=12.0.2"
-REM set "javaVersions[4]=13.0.1"
+set "javaVersions[3]=12.0.2"
+set "javaVersions[4]=13.0.1"
 
 rem Liste mit Pfaden, wo sich die Java-Versionen befinden könnten, der bevorzugte Pfad muss oben stehen
 set "pfade[0]=C:\ProgramData\IndivikarAG\runtime\javaVers"
@@ -204,46 +205,54 @@ pause
 exit /b 0
 
 :start_app
-rem die command-line wird erstellt (Teil 1: Java-Pfad und module-path)
-set "command=!gefundene_java_pfad! --module-path "!gefundene_javafx_pfad!""
+rem die command-line wird erstellt (Teil 1 der command-line)
+rem WICHTIG: Java-Pfad in Anführungszeichen setzen wegen Leerzeichen
+set "command="!gefundene_java_pfad!" --module-path "!gefundene_javafx_pfad!""
 
-rem die Module für --add-modules werden in die command-line eingefügt (Teil 2)
+rem die Module für --add-modules werden in die command-line eingefügt (Teil 2 der command-line)
 echo:
 echo --add-modules
 echo ===============================================================================================================
-
-rem Major Version extrahieren
+set "modules_to_add="
 for /f "tokens=1 delims=." %%v in ("!gefundene_java_version!") do set "majorVer=%%v"
-echo Major Java Version: !majorVer!
 
-rem Module direkt definieren basierend auf Java-Version
-if "!majorVer!" GEQ "14" (
-    rem Ab Java 14 ohne javafx.swing
-    set "modules_list=javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.media,javafx.web"
-    echo modules: javafx.controls
-    echo modules: javafx.fxml
-    echo modules: javafx.graphics
-    echo modules: javafx.base
-    echo modules: javafx.media
-    echo modules: javafx.web
-    echo modules: javafx.swing ^(wird nicht verwendet, weil es ab Java 14 nicht mehr supportet wird^)
-) else (
-    rem Java 11-13 mit javafx.swing
-    set "modules_list=javafx.controls,javafx.fxml,javafx.graphics,javafx.base,javafx.media,javafx.swing,javafx.web"
-    echo modules: javafx.controls
-    echo modules: javafx.fxml
-    echo modules: javafx.graphics
-    echo modules: javafx.base
-    echo modules: javafx.media
-    echo modules: javafx.swing
-    echo modules: javafx.web
+rem Debug: Zeige die Major-Version
+echo Debug: Major Version = !majorVer!
+
+for /F "tokens=1 delims==" %%m in ('set add_modules[') do (
+    set "modul=!%%m!"
+    echo Debug: Prüfe Modul: !modul!
+    
+    rem Prüfe, ob javafx.swing bei Java 14+ übersprungen werden soll
+    set "skip_module=0"
+    if "!majorVer!" GEQ "14" (
+        if /I "!modul!"=="javafx.swing" (
+            set "skip_module=1"
+            echo modules: !modul! "wird nicht verwendet, weil es ab Java 14 nicht mehr supportet wird"
+        )
+    )
+    
+    rem Modul hinzufügen, wenn es nicht übersprungen werden soll
+    if "!skip_module!"=="0" (
+        echo modules: !modul!
+        if "!modules_to_add!"=="" (
+            set "modules_to_add=!modul!"
+        ) else (
+            set "modules_to_add=!modules_to_add!,!modul!"
+        )
+    )
 )
 
-rem Module zur Command-Line hinzufügen (Teil 3)
-set "command=!command! --add-modules !modules_list!"
-echo Hinzugefügte Module: !modules_list!
+echo Debug: Finale Module-Liste: !modules_to_add!
 
-rem die --add-opens werden in die command-line eingefügt (Teil 4)
+rem Nur --add-modules hinzufügen, wenn Module vorhanden sind
+if not "!modules_to_add!"=="" (
+    set "command=!command! --add-modules=!modules_to_add!"
+) else (
+    echo WARNUNG: Keine Module für --add-modules gefunden!
+)
+
+rem die --add-opens werden in die command-line eingefügt (Teil 3 der command-line)
 echo:
 echo --add-opens
 echo ===============================================================================================================
@@ -253,14 +262,14 @@ for /F "tokens=1 delims==" %%o in ('set add_opens[') do (
     set "command=!command! --add-opens !opens!"
 )
 
-rem die JAR-Datei wird hinzugefügt (Teil 5)
+rem die Datei, die gestartet werden soll, wird in die command-line eingefügt (Teil 4 der command-line)
 set "command=!command! -jar !startDatei!"
 
-rem die Java-Args werden NACH der JAR-Datei hinzugefügt (Teil 6)
+rem die Java-Args werden in die command-line eingefügt (Teil 5 der command-line)
+rem Entferne doppelte Args - nur einmal -authStartMitLogin
 echo:
-echo Java-Args (Anwendungsargumente)
+echo Java-Args
 echo ===============================================================================================================
-rem Args direkt hinzufügen (ohne doppelte Einträge)
 set "command=!command! -authStartMitLogin"
 echo java_args: -authStartMitLogin
 
@@ -274,7 +283,7 @@ echo ===========================================================================
 echo Das Programm "!cd!\!startDatei!" wird gestartet!
 echo ===============================================================================================================
 
-rem Command-Line ausführen
-call !command!
+rem Command-Line ausführen - WICHTIG: call entfernen bei Pfaden in Anführungszeichen
+!command!
 
 pause
